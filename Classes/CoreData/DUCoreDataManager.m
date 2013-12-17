@@ -78,7 +78,53 @@ void obtainObjectPermanentID(NSManagedObject *object, NSManagedObjectContext *co
     return [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] lastObject];
 }
 
+- (void) setupWithStoreName:(NSString *)storeName inBundle:(NSBundle *)bundle {
+    [self setupWithStoreName:storeName inBundle:bundle modelsToMerge:nil];
+}
+
+- (void) setupWithStoreName:(NSString *)storeName inBundle:(NSBundle *)bundle modelsToMerge:(NSArray *)otherModels {
+    NSAssert(bundle, @"You must pass a bundle");
+    NSAssert(![storeName hasSuffix:@".momd"], @"The store name must NOT end in .momd");
+    
+    
+    
+    NSString *path = [bundle pathForResource:[storeName stringByDeletingPathExtension]
+                                                     ofType:@"momd"];
+    NSURL *modelUrl = [NSURL fileURLWithPath:path];
+    NSManagedObjectModel *model = [[NSManagedObjectModel alloc] initWithContentsOfURL:modelUrl];
+    
+    if (otherModels) {
+        NSMutableArray *allModels = [NSMutableArray arrayWithArray:otherModels];
+        [allModels addObject:model];
+        
+        NSMutableArray *finalModels = [NSMutableArray arrayWithCapacity:0];
+        
+        NSMutableArray *updatedEntities = [NSMutableArray arrayWithCapacity:0];
+        for (NSManagedObjectModel *immutableModel in allModels) {
+            NSManagedObjectModel *model = [immutableModel mutableCopy];
+            for (NSEntityDescription *entity in [model entities]) {
+                if ([[[entity userInfo] objectForKey:@"TempPlaceholder"] boolValue]) {
+                    // Ignore placeholder.
+                    DULog(@"Ignoring: %@", entity.name);
+                } else {
+                    [updatedEntities addObject:entity];
+                }
+            }
+            [model setEntities:updatedEntities];
+            [updatedEntities removeAllObjects];
+            [finalModels addObject:model];
+        }
+        
+        model = [NSManagedObjectModel modelByMergingModels:finalModels];
+    }
+
+    [NSManagedObjectModel MR_setDefaultManagedObjectModel:model];
+    
+    [self setupWithStoreName:storeName];
+}
+
 - (void) setupWithStoreName:(NSString *)storeName {
+    
     //Set up core data
     NSPersistentStoreCoordinator *coordinator = [NSPersistentStoreCoordinator MR_coordinatorWithAutoMigratingSqliteStoreNamed:storeName];
     [NSPersistentStoreCoordinator MR_setDefaultStoreCoordinator:coordinator];
@@ -109,32 +155,32 @@ void obtainObjectPermanentID(NSManagedObject *object, NSManagedObjectContext *co
 
 #pragma mark - iCloud Setup
 
-//- (void) setupRecreatingFromRemoteStorWithStoreName:(NSString *)storeName iCloudID:(NSString *)key {
+- (void) setupRecreatingFromRemoteStorWithStoreName:(NSString *)storeName iCloudID:(NSString *)key {
 //    [self setupWithStoreName:storeName iCloudID:key options:@{NSPersistentStoreRebuildFromUbiquitousContentOption: [NSNumber numberWithBool:YES]}];
-//}
+}
 
 - (void) setupClearingRemoteStorWithStoreName:(NSString *)storeName iCloudID:(NSString *)key {
     
-    NSString *contentName = [key stringByReplacingOccurrencesOfString:@"." withString:@"~"];
-    NSDictionary *options = @{
-                              NSPersistentStoreUbiquitousContentNameKey: contentName,
-                              NSPersistentStoreUbiquitousContainerIdentifierKey: key,
-                              NSPersistentStoreRemoveUbiquitousMetadataOption: [NSNumber numberWithBool:YES]};
+//    NSString *contentName = [key stringByReplacingOccurrencesOfString:@"." withString:@"~"];
+//    NSDictionary *options = @{
+//                              NSPersistentStoreUbiquitousContentNameKey: contentName,
+//                              NSPersistentStoreUbiquitousContainerIdentifierKey: key,
+//                              NSPersistentStoreRemoveUbiquitousMetadataOption: [NSNumber numberWithBool:YES]};
+//    
+//    
+//    //First remove
+//    NSError *error = nil;
+//    NSURL *storeURL = [[self applicationDocumentsDirectory] URLByAppendingPathComponent:storeName];
     
-    
-    //First remove
-    NSError *error = nil;
-    NSURL *storeURL = [[self applicationDocumentsDirectory] URLByAppendingPathComponent:storeName];
-    
-    @try {
-        BOOL deleted = [NSPersistentStoreCoordinator removeUbiquitousContentAndPersistentStoreAtURL:storeURL options:options error:&error];
-    }
-    @catch (NSException *exception) {
-        
-    }
-    @finally {
-        
-    }
+//    @try {
+//        BOOL deleted = [NSPersistentStoreCoordinator removeUbiquitousContentAndPersistentStoreAtURL:storeURL options:options error:&error];
+//    }
+//    @catch (NSException *exception) {
+//        
+//    }
+//    @finally {
+//        
+//    }
     
     
     
@@ -252,7 +298,7 @@ void obtainObjectPermanentID(NSManagedObject *object, NSManagedObjectContext *co
 					ErrorLog(@"Couldn't get the permanent id's %@", error);
 				}
 			}
-						
+			
 			[coreData performSaveOfContext:mainContext];
 			
 			[coreData.diskWritingContext performBlock:^{
@@ -275,6 +321,12 @@ void obtainObjectPermanentID(NSManagedObject *object, NSManagedObjectContext *co
         ErrorLog(@"There is an error with saving core data %@", error);
         
 #ifdef DEBUG
+        
+        NSSet __unused *registeredObjects = [context registeredObjects];
+        NSSet __unused *insertedObjects = [context insertedObjects];
+        NSSet __unused *deletedObjects = [context deletedObjects];
+        NSSet __unused *updatedObjects = [context updatedObjects];
+        
         @throw [NSException exceptionWithName:@"Core Data Save Error" reason:@"Look at the logs, this only crashes in DEBUG mode, but you should figure out what is going wrong" userInfo:nil];
 #endif
         
@@ -296,6 +348,7 @@ void obtainObjectPermanentID(NSManagedObject *object, NSManagedObjectContext *co
     if (context == MainContext) {
         [DUCoreDataManager saveMainContext];
     } else {
+        
 		if ([context hasChanges]) {
 									
 			[context performBlockAndWait:^{
@@ -339,5 +392,23 @@ void obtainObjectPermanentID(NSManagedObject *object, NSManagedObjectContext *co
 		[context performBlockAndWait:block];
 	}
 }
+
+
+//- (void)cleanAndResetupStore
+//{
+//    NSError *error = nil;
+//	
+//    NSURL *storeURL = [NSPersistentStore MR_urlForStoreName:@"CoreData"];
+//	
+//    [MagicalRecord cleanUp];
+//	
+//    if([[NSFileManager defaultManager] removeItemAtURL:storeURL error:&error]){
+//        [self setup];
+//    }
+//    else{
+//        NSLog(@"An error has occurred while deleting store");
+//        NSLog(@"Error description: %@", error.description);
+//    }
+//}
 
 @end

@@ -269,4 +269,39 @@ static void ReachabilityCallback(SCNetworkReachabilityRef target, SCNetworkReach
 	}
 	return retVal;
 }
+
+- (BOOL) isReachable {
+	
+	NSAssert(reachabilityRef, @"isReachable called with NULL reachabilityRef");
+	
+	SCNetworkReachabilityFlags flags = 0;
+	NetworkStatus status = NotReachable;
+	
+	if (SCNetworkReachabilityGetFlags(reachabilityRef, &flags)) {
+		
+        //		logReachabilityFlags(flags);
+        
+		status = [self networkStatusForFlags: flags];
+        
+        //		logNetworkStatus(status);
+		
+		return (NotReachable != status);
+	}
+	
+	return NO;
+	
+}
+
+- (NSString *) currentReachabilityStatusString {
+    NetworkStatus currentStatus = [[Reachability reachabilityForInternetConnection] currentReachabilityStatus];
+    switch (currentStatus) {
+        case ReachableViaWiFi:
+            return @"WiFi";
+        case NotReachable:
+            return @"Offline";
+        case ReachableViaWWAN:
+            return @"WWAN (4G/3G/Edge)";
+    }
+}
+
 @end

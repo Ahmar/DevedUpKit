@@ -5,7 +5,7 @@
 //
 
 #import <CoreData/CoreData.h>
-#import "MagicalRecord.h"
+#import "MagicalRecord.h" //NOTE: If you get MagicalRecord.h file not found... you haven't checked out the submodules properly, you are on a detached HEAD.
 
 extern NSString * const CoreDataUpdatedExternally;
 
@@ -31,6 +31,8 @@ extern NSString * const CoreDataUpdatedExternally;
 /*
     Setup
  */
+- (void) setupWithStoreName:(NSString *)storeName inBundle:(NSBundle *)bundle;
+- (void) setupWithStoreName:(NSString *)storeName inBundle:(NSBundle *)bundle modelsToMerge:(NSArray *)otherModels;
 - (void) setupWithStoreName:(NSString *)storeName;
 - (void) setupWithStoreName:(NSString *)storeName iCloudID:(NSString *)key;
 
@@ -59,3 +61,5 @@ id existingObjectWithID(NSManagedObjectID *objectID, NSManagedObjectContext *con
 //having the persistent store on the main context - sometimes you don't have the persistent object id's
 //in a timely manner...maybe
 void obtainObjectPermanentID(NSManagedObject *object, NSManagedObjectContext *context);
+
+typedef DUCoreDataManager FFXCoreDataManager;
