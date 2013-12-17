@@ -38,8 +38,8 @@ NSString * const RemoteImageDownloadCountChangedNotification = @"RemoteImageDown
 }
 
 - (id) initWithURL:(NSURL *)theImageURL {
-    NSAssert(theImageURL, @"Need a url");
-    NSAssert(theImageURL.absoluteString.length, @"URL needs to have content");
+//    NSAssert(theImageURL, @"Need a url");
+//    NSAssert(theImageURL.absoluteString.length, @"URL needs to have content");
     self = [super init];
     if (self) {
         _requestStatus = DURequestStatusNone;
