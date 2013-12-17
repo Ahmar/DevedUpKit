@@ -78,6 +78,10 @@ void obtainObjectPermanentID(NSManagedObject *object, NSManagedObjectContext *co
     return [[[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask] lastObject];
 }
 
+- (void) setup {
+    [self setupWithStoreName:@"CoreData"];
+}
+
 - (void) setupWithStoreName:(NSString *)storeName inBundle:(NSBundle *)bundle {
     [self setupWithStoreName:storeName inBundle:bundle modelsToMerge:nil];
 }
